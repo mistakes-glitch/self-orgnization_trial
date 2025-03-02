@@ -30,3 +30,50 @@ for i in range(16,51):
 
 message_overall=[{"role": "system", "content": oam}]
 message_outside=[{"role": "system", "content": osm}]
+
+for i in range(1,11):
+  response={}
+  for j in range(1,51):
+    response[j] = clients[j].chat.completions.create(model="deepseek-chat",messages=messages[j])
+    messages[j].append(response[j].choices[0].message)
+  for j in range(1,51):
+    for k in range(1,51):
+      if(j!=k):
+        messages[j].append({"role": "user","content":"第"+k+"位员工说"+response[k]["content"]})
+  message_overall.apend({"role":"user","content":"这是第"+i+"轮"})
+  for j in range(1,51):
+    message_overall.append({"role":"user","content":"第"+j+"位员工说"+response[j]["content"]})
+
+response_init=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
+print(response_init)
+message_overall.append(response_init)
+message_outside.append({"role":"user","content":response_init["content"]})
+for k in range(1,51):
+  messages[k].append({"role": "user","content":response_init["content"]})
+response_init=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
+print(response_init)
+message_outside.append(response_init)
+for k in range(1,51):
+  messages[k].append({"role": "user","content":response_init["content"]})
+
+#formal
+for i in range(1,51):
+  response={}
+  for j in range(1,51):
+    response[j] = clients[j].chat.completions.create(model="deepseek-chat",messages=messages[j])
+    messages[j].append(response[j].choices[0].message)
+  for j in range(1,51):
+    for k in range(1,51):
+      if(j!=k):
+        messages[j].append({"role": "user","content":"第"+k+"位员工说"+response[k]["content"]})
+  for j in range(1,51):
+    message_overall.append({"role":"user","content":"第"+j+"位员工说"+response[j]["content"]})
+  response_overall=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
+  for k in range(1,51):
+    messages[k].append({"role": "user","content":response_overall["content"]})
+  response_outside=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
+  message_outside.append(response_outside)
+  for k in range(1,51):
+    messages[k].append({"role": "user","content":response_outside["content"]})
+  print(message_overall)
+  print(message_outside)
