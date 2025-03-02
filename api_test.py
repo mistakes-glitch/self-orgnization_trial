@@ -20,13 +20,13 @@ with open('initpromt_outside.in', 'r') as file:
 
 messages={}
 for i in range(1,6):
-  messages[i] = [{"role": "system", "content": "你是一位中国人民大学公共管理专业毕业生，现入职芯片设计公司人大玫红光，你的员工编号是"+i+constitution}]
+  messages[i] = [{"role": "system", "content": "你是一位中国人民大学公共管理专业毕业生，现入职芯片设计公司人大玫红光，你的员工编号是"+str(i)+constitution}]
 
 for i in range(6,16):
-  messages[i] = [{"role": "system", "content": "你是一位中国人民大学集成电路专业毕业生，并且是一位资深ic设计工程师，并对芯片生产全栈有所了解，现入职芯片设计公司人大玫红光，你的员工编号是"+i+constitution}]
+  messages[i] = [{"role": "system", "content": "你是一位中国人民大学集成电路专业毕业生，并且是一位资深ic设计工程师，并对芯片生产全栈有所了解，现入职芯片设计公司人大玫红光，你的员工编号是"+str(i)+constitution}]
 
 for i in range(16,51):
-  messages[i] = [{"role": "system", "content": "你是一位中国人民大学集成电路专业毕业生，对芯片生产全栈有所了解，现入职芯片设计公司人大玫红光，你的员工编号是"+i+constitution}]
+  messages[i] = [{"role": "system", "content": "你是一位中国人民大学集成电路专业毕业生，对芯片生产全栈有所了解，现入职芯片设计公司人大玫红光，你的员工编号是"+str(i)+constitution}]
 
 message_overall=[{"role": "system", "content": oam}]
 message_outside=[{"role": "system", "content": osm}]
@@ -39,10 +39,10 @@ for i in range(1,11):
   for j in range(1,51):
     for k in range(1,51):
       if(j!=k):
-        messages[j].append({"role": "user","content":"第"+k+"位员工说"+response[k]["content"]})
-  message_overall.apend({"role":"user","content":"这是第"+i+"轮"})
+        messages[j].append({"role": "user","content":"第"+str(k)+"位员工说"+response[k]["content"]})
+  message_overall.apend({"role":"user","content":"这是第"+str(i)+"轮"})
   for j in range(1,51):
-    message_overall.append({"role":"user","content":"第"+j+"位员工说"+response[j]["content"]})
+    message_overall.append({"role":"user","content":"第"+str(j)+"位员工说"+response[j]["content"]})
 
 response_init=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
 print(response_init)
@@ -65,9 +65,9 @@ for i in range(1,51):
   for j in range(1,51):
     for k in range(1,51):
       if(j!=k):
-        messages[j].append({"role": "user","content":"第"+k+"位员工说"+response[k]["content"]})
+        messages[j].append({"role": "user","content":"第"+str(k)+"位员工说"+response[k]["content"]})
   for j in range(1,51):
-    message_overall.append({"role":"user","content":"第"+j+"位员工说"+response[j]["content"]})
+    message_overall.append({"role":"user","content":"第"+str(j)+"位员工说"+response[j]["content"]})
   response_overall=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
   for k in range(1,51):
     messages[k].append({"role": "user","content":response_overall["content"]})
