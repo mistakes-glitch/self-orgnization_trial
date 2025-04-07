@@ -31,49 +31,67 @@ for i in range(16,51):
 message_overall=[{"role": "system", "content": oam}]
 message_outside=[{"role": "system", "content": osm}]
 
+# 初始化轮次
 for i in range(1,11):
   response={}
   for j in range(1,51):
-    response[j] = clients[j].chat.completions.create(model="deepseek-chat",messages=messages[j])
+    response[j] = clients[j].chat.completions.create(model="deepseek-chat", messages=messages[j])
     messages[j].append(response[j].choices[0].message)
+  
+  # 添加其他员工的回复
   for j in range(1,51):
     for k in range(1,51):
-      if(j!=k):
-        messages[j].append({"role": "user","content":"第"+str(k)+"位员工说"+response[k]["content"]})
-  message_overall.apend({"role":"user","content":"这是第"+str(i)+"轮"})
+      if j != k:
+        content = response[k].choices[0].message.content  # 修复这里
+        messages[j].append({"role": "user", "content": f"第{k}位员工说{content}"})
+  
+  # 添加总体管理信息
+  message_overall.append({"role": "user", "content": f"这是第{i}轮"})  # 修正拼写错误
   for j in range(1,51):
-    message_overall.append({"role":"user","content":"第"+str(j)+"位员工说"+response[j]["content"]})
+    content = response[j].choices[0].message.content  # 修复这里
+    message_overall.append({"role": "user", "content": f"第{j}位员工说{content}"})
 
-response_init=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
-print(response_init)
-message_overall.append(response_init)
-message_outside.append({"role":"user","content":response_init["content"]})
-for k in range(1,51):
-  messages[k].append({"role": "user","content":response_init["content"]})
-response_init=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
-print(response_init)
-message_outside.append(response_init)
-for k in range(1,51):
-  messages[k].append({"role": "user","content":response_init["content"]})
+# 处理初始响应
+response_init = client_overall.chat.completions.create(model="deepseek-chat", messages=message_overall)
+print(response_init.choices[0].message.content)
+message_overall.append(response_init.choices[0].message)
+message_outside.append({"role": "user", "content": response_init.choices[0].message.content})
 
-#formal
-for i in range(1,51):
-  response={}
+for k in range(1,51):
+  messages[k].append({"role": "user", "content": response_init.choices[0].message.content})
+
+# 正式轮次
+for _ in range(1,51):  # 建议使用更有意义的变量名
+  response = {}
   for j in range(1,51):
-    response[j] = clients[j].chat.completions.create(model="deepseek-chat",messages=messages[j])
+    response[j] = clients[j].chat.completions.create(model="deepseek-chat", messages=messages[j])
     messages[j].append(response[j].choices[0].message)
+  
+  # 添加其他员工的回复
   for j in range(1,51):
     for k in range(1,51):
-      if(j!=k):
-        messages[j].append({"role": "user","content":"第"+str(k)+"位员工说"+response[k]["content"]})
+      if j != k:
+        content = response[k].choices[0].message.content  # 修复这里
+        messages[j].append({"role": "user", "content": f"第{k}位员工说{content}"})
+  
+  # 处理总体管理信息
   for j in range(1,51):
-    message_overall.append({"role":"user","content":"第"+str(j)+"位员工说"+response[j]["content"]})
-  response_overall=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
+    content = response[j].choices[0].message.content  # 修复这里
+    message_overall.append({"role": "user", "content": f"第{j}位员工说{content}"})
+  
+  response_overall = client_overall.chat.completions.create(model="deepseek-chat", messages=message_overall)
+  overall_content = response_overall.choices[0].message.content  # 修复这里
+  
   for k in range(1,51):
-    messages[k].append({"role": "user","content":response_overall["content"]})
-  response_outside=clients[j].chat.completions.create(model="deepseek-chat",messages=message_overall)
-  message_outside.append(response_outside)
-  for k in range(1,51):
-    messages[k].append({"role": "user","content":response_outside["content"]})
-  print(message_overall)
-  print(message_outside)
+    messages[k].append({"role": "user", "content": overall_content})
+  
+  response_outside = client_outside.chat.completions.create(model="deepseek-chat", messages=message_outside)
+  message_outside.append(response_outside.choices[0].message)  # 修复这里
+
+# 保存结果时建议使用json格式
+import json
+with open('message_overall.out', 'w') as file: 
+  json.dump(message_overall, file, ensure_ascii=False, indent=2)
+
+with open('message_outside.out', 'w') as file: 
+  json.dump(message_outside, file, ensure_ascii=False, indent=2)
