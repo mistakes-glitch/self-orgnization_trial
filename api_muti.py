@@ -2,6 +2,8 @@ import json
 import random
 from openai import OpenAI
 from tiktoken import get_encoding
+import concurrent.futures  # 新增多线程支持库
+
 
 # 初始化编码器
 enc = get_encoding("cl100k_base")
@@ -60,44 +62,73 @@ for i in range(16, 51):
 message_overall = [{"role": "system", "content": oam}]
 message_outside = [{"role": "system", "content": osm}]
 
-# 初始化阶段（2轮）
+def process_employee(client_id, client, message_history, max_tokens):
+    """多线程处理单个员工的函数"""
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=trim_messages(message_history, max_tokens)
+        )
+        message_obj = response.choices[0].message
+        return {
+            "client_id": client_id,
+            "response": response,
+            "new_message": {
+                "role": message_obj.role,
+                "content": message_obj.content
+            },
+            "error": None
+        }
+    except Exception as e:
+        print(f"员工{client_id}处理异常: {str(e)}")
+        return {
+            "client_id": client_id,
+            "response": None,
+            "new_message": None,
+            "error": str(e)
+        }
+
+# 修改后的初始化阶段（示例修改部分）
 for init_round in range(1, 3):
     print(f"正在处理初始化轮次 {init_round}/2")
     
-    # 收集员工响应
+    # 使用线程池处理员工响应
     responses = {}
-    for j in range(1, 51):
-        try:
-            response = clients[j].chat.completions.create(
-                model="deepseek-chat",
-                messages=trim_messages(messages[j], 2000))
-            
-            # 转换为字典格式
-            message_obj = response.choices[0].message
-            new_message = {
-                "role": message_obj.role,
-                "content": message_obj.content
-            }
-            
-            messages[j].append(new_message)
-            responses[j] = response
-        except Exception as e:
-            print(f"员工{j}初始化响应异常: {str(e)}")
-            continue
-    
-    # 员工间有限通信
-    for j in range(1, 51):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:  # 控制并发数
+        futures = []
+        for j in range(1, 51):
+            futures.append(
+                executor.submit(
+                    process_employee,
+                    client_id=j,
+                    client=clients[j],
+                    message_history=messages[j],
+                    max_tokens=2000
+                )
+            )
+        
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result["new_message"]:
+                messages[result["client_id"]].append(result["new_message"])
+                responses[result["client_id"]] = result["response"]
+
+    # 员工间通信也改为多线程
+    def process_communication(client_id):
         colleagues = random.sample(range(1, 51), 3)
         for k in colleagues:
-            if j != k and k in responses:
+            if client_id != k and k in responses:
                 message_obj = responses[k].choices[0].message
-                messages[j].append({
+                messages[client_id].append({
                     "role": "user",
                     "content": f"第{k}位员工观点摘要：{message_obj.content[:100]}..."
                 })
-        messages[j] = trim_messages(messages[j], 5000)
+        messages[client_id] = trim_messages(messages[client_id], 5000)
     
-    # 生成轮次摘要
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        executor.map(process_communication, range(1, 51))
+    
+    # ...（保持原有摘要生成逻辑不变）...
     summary_prompt = [{
         "role": "user",
         "content": "请用200字概括本阶段讨论重点：" + "\n".join(
@@ -118,39 +149,45 @@ for init_round in range(1, 3):
     except Exception as e:
         print(f"摘要生成失败: {str(e)}")
 
-# 正式处理阶段（10轮）
+# 修改后的正式处理阶段
 for round in range(1, 11):
     print(f"正在处理正式轮次 {round}/10")
     
-    # 收集员工响应
+    # 多线程处理员工响应
     responses = {}
-    for j in range(1, 51):
-        try:
-            response = clients[j].chat.completions.create(
-                model="deepseek-chat",
-                messages=trim_messages(messages[j], 3000)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = []
+        for j in range(1, 51):
+            futures.append(
+                executor.submit(
+                    process_employee,
+                    client_id=j,
+                    client=clients[j],
+                    message_history=messages[j],
+                    max_tokens=3000
+                )
             )
-            message_obj = response.choices[0].message
-            messages[j].append({
-                "role": message_obj.role,
-                "content": message_obj.content
-            })
-            responses[j] = response
-        except Exception as e:
-            print(f"员工{j}响应异常: {str(e)}")
-            continue
-    
-    # 跨员工通信（有限传播）
-    for j in range(1, 51):
+        
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result["new_message"]:
+                messages[result["client_id"]].append(result["new_message"])
+                responses[result["client_id"]] = result["response"]
+
+    # 多线程处理跨员工通信
+    def process_round_communication(client_id):
         colleagues = random.sample(range(1, 51), 5)
         for k in colleagues:
-            if j != k and k in responses:
+            if client_id != k and k in responses:
                 message_obj = responses[k].choices[0].message
-                messages[j].append({
+                messages[client_id].append({
                     "role": "user",
                     "content": f"第{round}轮第{k}位同事观点：{message_obj.content[:200]}..."
                 })
-        messages[j] = trim_messages(messages[j], 6000)
+        messages[client_id] = trim_messages(messages[client_id], 6000)
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        executor.map(process_round_communication, range(1, 51))
     
     # 生成管理摘要
     try:
